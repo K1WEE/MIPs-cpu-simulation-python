@@ -16,7 +16,7 @@ REG_NAMES = [
 REG_NUMBERS = {name: i for i, name in enumerate(REG_NAMES)}
 REG_NUMBERS["s8"] = 30
 
-SPECIAL, REGIMM, SPECIAL2 = 0x00, 0x01, 0x1C
+SPECIAL = 0x00  # opcode 0: the instruction is chosen by funct
 
 
 @dataclass(frozen=True)
@@ -24,22 +24,19 @@ class Spec:
     name: str
     opcode: int
     operands: tuple      # syntax order, e.g. ("rd", "rs", "rt")
-    funct: int = 0       # SPECIAL / SPECIAL2 only
-    rt_code: int = 0     # REGIMM only
+    funct: int = 0       # SPECIAL only
     imm_kind: str = "s"  # "s" signed 16 bit, "u" unsigned 16 bit, "lui" either
 
 
 def _build():
+    """
+    Integer instructions on the MIPS Reference Data card (slide/EMIPS.pdf):
+    the core instruction set plus the OPCODES table on page 2.
+    """
     t = []
 
     def special(name, funct, ops):
         t.append(Spec(name, SPECIAL, tuple(ops.split()), funct=funct))
-
-    def special2(name, funct, ops):
-        t.append(Spec(name, SPECIAL2, tuple(ops.split()), funct=funct))
-
-    def regimm(name, code, ops):
-        t.append(Spec(name, REGIMM, tuple(ops.split()), rt_code=code))
 
     def op(name, opcode, ops, kind="s"):
         t.append(Spec(name, opcode, tuple(ops.split()), imm_kind=kind))
@@ -67,12 +64,6 @@ def _build():
                     ("TEQ", 0x34), ("TNE", 0x36)]:
         special(name, f, "rs rt")
 
-    for name, c in [("BLTZ", 0x00), ("BGEZ", 0x01), ("BLTZAL", 0x10), ("BGEZAL", 0x11)]:
-        regimm(name, c, "rs label")
-    for name, c in [("TGEI", 0x08), ("TGEIU", 0x09), ("TLTI", 0x0A), ("TLTIU", 0x0B),
-                    ("TEQI", 0x0C), ("TNEI", 0x0E)]:
-        regimm(name, c, "rs imm")
-
     op("J", 0x02, "target")
     op("JAL", 0x03, "target")
     op("BEQ", 0x04, "rs rt label")
@@ -88,30 +79,19 @@ def _build():
                     ("LHU", 0x25), ("LWR", 0x26), ("SB", 0x28), ("SH", 0x29), ("SWL", 0x2A),
                     ("SW", 0x2B), ("SWR", 0x2E), ("LL", 0x30), ("SC", 0x38)]:
         op(name, o, "rt mem")
-
-    for name, f in [("MADD", 0x00), ("MADDU", 0x01), ("MSUB", 0x04), ("MSUBU", 0x05)]:
-        special2(name, f, "rs rt")
-    special2("MUL", 0x02, "rd rs rt")
-    special2("CLZ", 0x20, "rd rs")
-    special2("CLO", 0x21, "rd rs")
     return t
 
 
 cmdDict = {s.name: s for s in _build()}
-_BY_FUNCT = {(s.opcode, s.funct): s for s in cmdDict.values() if s.opcode in (SPECIAL, SPECIAL2)}
-_BY_RT = {s.rt_code: s for s in cmdDict.values() if s.opcode == REGIMM}
-_BY_OPCODE = {s.opcode: s for s in cmdDict.values() if s.opcode not in (SPECIAL, REGIMM, SPECIAL2)}
+_BY_FUNCT = {s.funct: s for s in cmdDict.values() if s.opcode == SPECIAL}
+_BY_OPCODE = {s.opcode: s for s in cmdDict.values() if s.opcode != SPECIAL}
 
 
 def encode(name, rs=0, rt=0, rd=0, sa=0, imm=0, target=0):
     """Pack fields into a 32 bit word. imm is taken as raw 16 bits, target as raw 26 bits."""
     s = cmdDict[name]
-    if s.opcode in (SPECIAL, SPECIAL2):
-        if name in ("CLZ", "CLO"):
-            rt = rd  # MIPS32 requires the rt field to equal rd
+    if s.opcode == SPECIAL:
         return s.opcode << 26 | rs << 21 | rt << 16 | rd << 11 | sa << 6 | s.funct
-    if s.opcode == REGIMM:
-        return s.opcode << 26 | rs << 21 | s.rt_code << 16 | (imm & 0xFFFF)
     if "target" in s.operands:
         return s.opcode << 26 | (target & 0x3FFFFFF)
     return s.opcode << 26 | rs << 21 | rt << 16 | (imm & 0xFFFF)
@@ -132,10 +112,8 @@ class Decoded:
 def decode_word(word):
     """Split a 32 bit word into fields. Returns None if it is not a known instruction."""
     opcode = word >> 26
-    if opcode in (SPECIAL, SPECIAL2):
-        spec = _BY_FUNCT.get((opcode, word & 0x3F))
-    elif opcode == REGIMM:
-        spec = _BY_RT.get((word >> 16) & 0x1F)
+    if opcode == SPECIAL:
+        spec = _BY_FUNCT.get(word & 0x3F)
     else:
         spec = _BY_OPCODE.get(opcode)
     if spec is None:

@@ -19,7 +19,8 @@
 
 # NCR: $4 = n, $5 = k, answer in $2 (or -1 if too large)
 NCR:    ADDI $2 $0 0
-        BLTZ $5 DONE            # k < 0 gives 0
+        SLT  $8 $5 $0
+        BNE  $8 $0 DONE         # k < 0 gives 0
         SLT  $8 $4 $5
         BNE  $8 $0 DONE         # k > n gives 0
 
@@ -56,7 +57,8 @@ INNER:  BLEZ $10 NEXT
         LW   $13 0($11)         # row[j]
         LW   $14 -4($11)        # row[j-1]
         ADDU $13 $13 $14
-        BLTZ $13 DONE           # sign bit set: too large, $2 is still -1
+        SLT  $8 $13 $0
+        BNE  $8 $0 DONE         # sign bit set: too large, $2 is still -1
         SW   $13 0($11)
         ADDI $10 $10 -1
         J    INNER

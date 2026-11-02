@@ -29,18 +29,20 @@ GOLDEN = {
     "LWR $8 4($9)": 0x99280004, "SB $8 4($9)": 0xA1280004, "SH $8 4($9)": 0xA5280004,
     "SWL $8 4($9)": 0xA9280004, "SW $8 4($9)": 0xAD280004, "SWR $8 4($9)": 0xB9280004,
     "LL $8 4($9)": 0xC1280004, "SC $8 4($9)": 0xE1280004,
-    "TEQI $9 5": 0x052C0005, "TGEI $9 5": 0x05280005, "TGEIU $9 5": 0x05290005,
-    "TLTI $9 5": 0x052A0005, "TLTIU $9 5": 0x052B0005, "TNEI $9 5": 0x052E0005,
-    "MUL $8 $9 $10": 0x712A4002, "MADD $9 $10": 0x712A0000, "MADDU $9 $10": 0x712A0001,
-    "MSUB $9 $10": 0x712A0004, "MSUBU $9 $10": 0x712A0005,
-    "CLZ $8 $9": 0x71284020, "CLO $8 $9": 0x71284021,
     # Offset 1 means the branch skips one instruction
     "BEQ $9 $10 1": 0x112A0001, "BNE $9 $10 1": 0x152A0001,
     "BLEZ $9 1": 0x19200001, "BGTZ $9 1": 0x1D200001,
-    "BLTZ $9 1": 0x05200001, "BGEZ $9 1": 0x05210001,
-    "BLTZAL $9 1": 0x05300001, "BGEZAL $9 1": 0x05310001,
     "J 0x2000": 0x08000800, "JAL 0x2000": 0x0C000800,
 }
+
+# Integer instructions on slide/EMIPS.pdf: core instruction set and the OPCODES table on page 2
+GREEN_CARD = set("""
+    ADD ADDI ADDIU ADDU AND ANDI BEQ BNE J JAL JR LBU LHU LL LUI LW NOR OR ORI
+    SLT SLTI SLTIU SLTU SLL SRL SB SC SH SW SUB SUBU
+    DIV DIVU MFHI MFLO MULT MULTU SRA
+    SRLV SLLV SRAV JALR MOVZ MOVN BREAK MTHI MTLO XOR TGE TGEU TLT TLTU TEQ TNE
+    BLEZ BGTZ XORI LB LH LWL LWR SWL SWR
+""".split())
 
 
 def words(source):
@@ -51,6 +53,9 @@ def words(source):
 class Hexcode(unittest.TestCase):
     def test_every_instruction_is_covered(self):
         self.assertEqual(set(cmdDict) - {s.split()[0] for s in GOLDEN}, set())
+
+    def test_instruction_set_matches_green_card(self):
+        self.assertEqual(set(cmdDict), GREEN_CARD)
 
     def test_golden(self):
         for source, expected in GOLDEN.items():
@@ -123,6 +128,11 @@ class Errors(unittest.TestCase):
         self.assert_error(".ORG 0x2001", 1, "multiple of 4")
         self.assert_error("HALT $1", 1, "no operands")
         self.assert_error("ADDI $8 $9 zz", 1, "Bad number")
+
+    def test_instructions_not_on_green_card_are_rejected(self):
+        for source in ["BLTZ $8 1", "BGEZAL $8 1", "MUL $8 $9 $10", "CLZ $8 $9", "MADD $8 $9", "TEQI $8 1"]:
+            with self.subTest(source):
+                self.assert_error(f"NOP\n{source}", 2, "Unknown opcode")
 
     def test_all_bad_lines_are_reported(self):
         with self.assertRaises(ProgramError) as ctx:

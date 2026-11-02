@@ -117,14 +117,18 @@ DONE:   HALT                # หยุดโปรแกรม
 
 ## คำสั่งที่รองรับ
 
+รองรับเฉพาะคำสั่งจำนวนเต็มที่อยู่ใน MIPS Reference Data (`slide/EMIPS.pdf`) ทั้ง Core Instruction Set และตาราง OPCODES หน้า 2
+
 - เลขคณิต/ตรรกะ: `ADD ADDU SUB SUBU ADDI ADDIU AND OR XOR NOR ANDI ORI XORI LUI SLT SLTU SLTI SLTIU`
 - Shift: `SLL SRL SRA SLLV SRLV SRAV`
-- คูณหาร: `MULT MULTU DIV DIVU MUL MADD MADDU MSUB MSUBU MFHI MFLO MTHI MTLO CLZ CLO`
+- คูณหาร: `MULT MULTU DIV DIVU MFHI MFLO MTHI MTLO` (ผลคูณอยู่ใน `hi`/`lo` ใช้ `MFLO` อ่านค่า)
 - Move แบบมีเงื่อนไข: `MOVN MOVZ`
-- Branch/Jump: `BEQ BNE BLEZ BGTZ BLTZ BGEZ BLTZAL BGEZAL J JAL JR JALR`
+- Branch/Jump: `BEQ BNE BLEZ BGTZ J JAL JR JALR`
 - Load/Store: `LB LBU LH LHU LW LWL LWR LL SB SH SW SWL SWR SC`
-- Trap: `TEQ TNE TGE TGEU TLT TLTU TEQI TNEI TGEI TGEIU TLTI TLTIU BREAK`
-- อื่นๆ: `NOP HALT .ORG`
+- Trap: `TEQ TNE TGE TGEU TLT TLTU BREAK`
+- อื่นๆ: `NOP` (คือ `SLL $0 $0 0`), `HALT`, `.ORG`
+
+คำสั่งที่ไม่อยู่ในการ์ด เช่น `BLTZ BGEZ BLTZAL BGEZAL MUL MADD CLZ` หรือ trap แบบ immediate (`TEQI` ฯลฯ) จะได้ error `Unknown opcode` ถ้าต้องการ `BLTZ $5 L` ให้เขียนเป็น `SLT $8 $5 $0` ตามด้วย `BNE $8 $0 L` แทน
 
 ## สิ่งที่ต่างจาก V7
 

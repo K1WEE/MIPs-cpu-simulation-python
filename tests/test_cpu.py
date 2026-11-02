@@ -112,7 +112,7 @@ class MulDiv(unittest.TestCase):
         self.assertEqual(self.hilo(loads(-2, 3) + "MULT $9 $10"), (0xFFFFFFFF, 0xFFFFFFFA))
         self.assertEqual(self.hilo(loads(-2, 3) + "MULTU $9 $10"), (2, 0xFFFFFFFA))
         self.assertEqual(self.hilo(loads(0x10000, 0x10000) + "MULT $9 $10"), (1, 0))
-        self.assertEqual(result(loads(-2, 3) + "MUL $8 $9 $10"), 0xFFFFFFFA)
+        self.assertEqual(result(loads(-2, 3) + "MULT $9 $10\nMFLO $8"), 0xFFFFFFFA)
 
     def test_div_truncates_toward_zero(self):
         self.assertEqual(self.hilo(loads(7, 2) + "DIV $9 $10"), (1, 3))
@@ -125,18 +125,11 @@ class MulDiv(unittest.TestCase):
     def test_divide_by_zero_keeps_running(self):
         self.assertEqual(result(loads(7, 0) + "DIV $9 $10\nADDI $8 $0 9"), 9)
 
-    def test_moves_and_madd(self):
+    def test_hi_lo_moves(self):
         cpu = run(loads(5, 6) + "MTHI $9\nMTLO $10\nMFHI $11\nMFLO $16")
         self.assertEqual((cpu.registers[11], cpu.registers[16]), (5, 6))
-        self.assertEqual(self.hilo(loads(2, 3) + "MULT $9 $10\nMADD $9 $10"), (0, 12))
-        self.assertEqual(self.hilo(loads(2, 3) + "MSUB $9 $10"), (0xFFFFFFFF, 0xFFFFFFFA))
-        self.assertEqual(self.hilo(loads(-1, 1) + "MADDU $9 $10"), (0, 0xFFFFFFFF))
-        self.assertEqual(self.hilo(loads(1, 1) + "MSUBU $9 $10"), (0xFFFFFFFF, 0xFFFFFFFF))
 
-    def test_counts_and_conditional_moves(self):
-        self.assertEqual(result(loads(1) + "CLZ $8 $9"), 31)
-        self.assertEqual(result(loads(0) + "CLZ $8 $9"), 32)
-        self.assertEqual(result(loads(0xF0000000) + "CLO $8 $9"), 4)
+    def test_conditional_moves(self):
         self.assertEqual(result(loads(5, 1) + "MOVN $8 $9 $10"), 5)
         self.assertEqual(result(loads(5, 1) + "MOVZ $8 $9 $10"), 0)
         self.assertEqual(result(loads(5, 0) + "MOVZ $8 $9 $10"), 5)
@@ -151,9 +144,7 @@ class Control(unittest.TestCase):
             (loads(1, 1), "BEQ $9 $10", True), (loads(1, 2), "BEQ $9 $10", False),
             (loads(1, 2), "BNE $9 $10", True), (loads(1, 1), "BNE $9 $10", False),
             (loads(0), "BLEZ $9", True), (loads(-1), "BLEZ $9", True), (loads(1), "BLEZ $9", False),
-            (loads(1), "BGTZ $9", True), (loads(0), "BGTZ $9", False),
-            (loads(-1), "BLTZ $9", True), (loads(0), "BLTZ $9", False),
-            (loads(0), "BGEZ $9", True), (loads(-1), "BGEZ $9", False),
+            (loads(1), "BGTZ $9", True), (loads(0), "BGTZ $9", False), (loads(-1), "BGTZ $9", False),
         ]:
             with self.subTest(f"{setup} {branch}"):
                 self.assertEqual(self.taken(setup, branch), expected)
@@ -180,10 +171,6 @@ class Control(unittest.TestCase):
         cpu = run(".ORG 0x2000\nADDI $9 $0 0x2008\nJALR $9 $9\nNOP")
         self.assertEqual(cpu.registers[9], 0x2008)
 
-    def test_link_branches_always_link(self):
-        self.assertEqual(run(".ORG 0x100\nADDI $9 $0 1\nBLTZAL $9 1\nNOP").registers[31], 0x108)
-        self.assertEqual(run(".ORG 0x100\nADDI $9 $0 1\nBGEZAL $9 1\nNOP\nNOP").registers[31], 0x108)
-
     def test_bad_pc(self):
         for source in ["ADDI $9 $0 0x100\nJR $9", "ADDI $9 $0 2\nJR $9"]:
             with self.subTest(source), self.assertRaises(SimulationError) as ctx:
@@ -196,8 +183,6 @@ class Control(unittest.TestCase):
             loads(1, 1) + "TEQ $9 $10", loads(1, 2) + "TNE $9 $10",
             loads(2, 1) + "TGE $9 $10", loads(-1, 1) + "TGEU $9 $10",
             loads(-1, 1) + "TLT $9 $10", loads(1, -1) + "TLTU $9 $10",
-            loads(5) + "TEQI $9 5", loads(4) + "TNEI $9 5", loads(5) + "TGEI $9 5",
-            loads(-1) + "TGEIU $9 5", loads(-1) + "TLTI $9 5", loads(1) + "TLTIU $9 5",
             "BREAK",
         ]:
             with self.subTest(source), self.assertRaises(SimulationError):

@@ -66,17 +66,8 @@ def _set_hilo(c, value):
     c.hi, c.lo = value >> 32, value & M32
 
 
-def _hilo(c):
-    return c.hi << 32 | c.lo
-
-
 def _mult(c, d): _set_hilo(c, s32(c.registers[d.rs]) * s32(c.registers[d.rt]))
 def _multu(c, d): _set_hilo(c, c.registers[d.rs] * c.registers[d.rt])
-def _madd(c, d): _set_hilo(c, _hilo(c) + s32(c.registers[d.rs]) * s32(c.registers[d.rt]))
-def _maddu(c, d): _set_hilo(c, _hilo(c) + c.registers[d.rs] * c.registers[d.rt])
-def _msub(c, d): _set_hilo(c, _hilo(c) - s32(c.registers[d.rs]) * s32(c.registers[d.rt]))
-def _msubu(c, d): _set_hilo(c, _hilo(c) - c.registers[d.rs] * c.registers[d.rt])
-def _mul(c, d): c.registers[d.rd] = (s32(c.registers[d.rs]) * s32(c.registers[d.rt])) & M32
 
 
 def _div(c, d):
@@ -99,8 +90,6 @@ def _mfhi(c, d): c.registers[d.rd] = c.hi
 def _mflo(c, d): c.registers[d.rd] = c.lo
 def _mthi(c, d): c.hi = c.registers[d.rs]
 def _mtlo(c, d): c.lo = c.registers[d.rs]
-def _clz(c, d): c.registers[d.rd] = 32 - c.registers[d.rs].bit_length()
-def _clo(c, d): c.registers[d.rd] = 32 - (~c.registers[d.rs] & M32).bit_length()
 
 
 def _movn(c, d):
@@ -131,26 +120,6 @@ def _blez(c, d):
 
 def _bgtz(c, d):
     if s32(c.registers[d.rs]) > 0: _take(c, d)
-
-
-def _bltz(c, d):
-    if s32(c.registers[d.rs]) < 0: _take(c, d)
-
-
-def _bgez(c, d):
-    if s32(c.registers[d.rs]) >= 0: _take(c, d)
-
-
-def _bltzal(c, d):
-    taken = s32(c.registers[d.rs]) < 0
-    c.registers[31] = c.PC
-    if taken: _take(c, d)
-
-
-def _bgezal(c, d):
-    taken = s32(c.registers[d.rs]) >= 0
-    c.registers[31] = c.PC
-    if taken: _take(c, d)
 
 
 def _j(c, d): c.PC = (c.PC & 0xF0000000) | (d.target << 2)
@@ -243,12 +212,6 @@ def _tlt(c, d): _trap_if(s32(c.registers[d.rs]) < s32(c.registers[d.rt]))
 def _tltu(c, d): _trap_if(c.registers[d.rs] < c.registers[d.rt])
 def _teq(c, d): _trap_if(c.registers[d.rs] == c.registers[d.rt])
 def _tne(c, d): _trap_if(c.registers[d.rs] != c.registers[d.rt])
-def _tgei(c, d): _trap_if(s32(c.registers[d.rs]) >= d.simm)
-def _tgeiu(c, d): _trap_if(c.registers[d.rs] >= (d.simm & M32))
-def _tlti(c, d): _trap_if(s32(c.registers[d.rs]) < d.simm)
-def _tltiu(c, d): _trap_if(c.registers[d.rs] < (d.simm & M32))
-def _teqi(c, d): _trap_if(s32(c.registers[d.rs]) == d.simm)
-def _tnei(c, d): _trap_if(s32(c.registers[d.rs]) != d.simm)
 def _break(c, d): raise SimulationError("BREAK instruction")
 
 

@@ -18,7 +18,8 @@
         HALT
 
 # NCR: $4 = n, $5 = k, answer in $2
-NCR:    BLTZ $5 ZERO            # k < 0
+NCR:    SLT  $8 $5 $0           # $8 = (k < 0)
+        BNE  $8 $0 ZERO         # k < 0
         SLT  $8 $4 $5           # $8 = (n < k)
         BNE  $8 $0 ZERO         # k > n
         BEQ  $5 $0 ONE          # k == 0
