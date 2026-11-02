@@ -1,0 +1,69 @@
+# nCk (combination) using one row of Pascal's triangle in memory
+#
+# row[j] (at 0x3000 + 4*j) holds C(i, j). For each i, from high j to low j:
+#   row[j] = row[j] + row[j-1]
+#
+# k is first replaced by min(k, n-k), so no value in the row is larger than the
+# answer. Only addition is used, so every answer that fits in a signed 32 bit
+# integer is exact. If the answer does not fit, $2 = -1 (0xffffffff).
+#
+# Change n and k on the first two lines. The answer is in $2 when HALT is reached.
+#
+# Registers: $4 = n, $5 = k, $2 = answer, $9 = row address, $10 = j, $12 = i
+
+.ORG 0x2000
+        ADDI $4 $0 10           # n
+        ADDI $5 $0 4            # k
+        JAL  NCR                # $2 = C(n, k)
+        HALT
+
+# NCR: $4 = n, $5 = k, answer in $2 (or -1 if too large)
+NCR:    ADDI $2 $0 0
+        BLTZ $5 DONE            # k < 0 gives 0
+        SLT  $8 $4 $5
+        BNE  $8 $0 DONE         # k > n gives 0
+
+        SUB  $8 $4 $5           # k = min(k, n-k)
+        SLT  $11 $8 $5
+        BEQ  $11 $0 KREADY
+        ADD  $5 $8 $0
+KREADY: ADDI $2 $0 -1
+        SLTI $8 $5 17
+        BEQ  $8 $0 DONE         # k > 16 never fits in 32 bits
+
+        ADDI $9 $0 0x3000       # row[0] = 1
+        ADDI $8 $0 1
+        SW   $8 0($9)
+        ADDI $10 $0 1           # j = 1
+CLEAR:  SLT  $8 $5 $10
+        BNE  $8 $0 CLEARED      # stop when j > k
+        SLL  $11 $10 2
+        ADD  $11 $9 $11
+        SW   $0 0($11)          # row[j] = 0
+        ADDI $10 $10 1
+        J    CLEAR
+
+CLEARED: ADDI $12 $0 1          # i = 1
+OUTER:  SLT  $8 $4 $12
+        BNE  $8 $0 FINISH       # stop when i > n
+        ADD  $10 $5 $0          # j = min(i, k)
+        SLT  $8 $12 $10
+        BEQ  $8 $0 INNER
+        ADD  $10 $12 $0
+INNER:  BLEZ $10 NEXT
+        SLL  $11 $10 2          # $11 = address of row[j]
+        ADD  $11 $9 $11
+        LW   $13 0($11)         # row[j]
+        LW   $14 -4($11)        # row[j-1]
+        ADDU $13 $13 $14
+        BLTZ $13 DONE           # sign bit set: too large, $2 is still -1
+        SW   $13 0($11)
+        ADDI $10 $10 -1
+        J    INNER
+NEXT:   ADDI $12 $12 1
+        J    OUTER
+
+FINISH: SLL  $11 $5 2           # answer = row[k]
+        ADD  $11 $9 $11
+        LW   $2 0($11)
+DONE:   JR   $31

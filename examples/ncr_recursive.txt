@@ -1,0 +1,57 @@
+# nCk (combination) using recursion and the stack
+#
+#   C(n, k) = 1                         if k == 0 or k == n
+#   C(n, k) = C(n-1, k-1) + C(n-1, k)   otherwise
+#   C(n, k) = 0                         if k < 0 or k > n
+#
+# Change n and k on the first two lines. The answer is in $2 when HALT is reached.
+# The number of calls grows with the answer, so keep n small (up to about 20).
+# Use ncr_iterative.txt for larger n.
+#
+# Registers: $4 = n, $5 = k, $2 = answer, $29 = stack pointer, $31 = return address
+
+.ORG 0x2000
+        ADDI $4 $0 6            # n
+        ADDI $5 $0 2            # k
+        ADDI $29 $0 0x7000      # stack starts at 0x7000 and grows down
+        JAL  NCR                # $2 = C(n, k)
+        HALT
+
+# NCR: $4 = n, $5 = k, answer in $2
+NCR:    BLTZ $5 ZERO            # k < 0
+        SLT  $8 $4 $5           # $8 = (n < k)
+        BNE  $8 $0 ZERO         # k > n
+        BEQ  $5 $0 ONE          # k == 0
+        BEQ  $5 $4 ONE          # k == n
+
+        ADDI $29 $29 -16        # push $31, $16, $17, $18
+        SW   $31 12($29)
+        SW   $16 8($29)
+        SW   $17 4($29)
+        SW   $18 0($29)
+
+        ADD  $16 $4 $0          # $16 = n, $17 = k (kept across the calls)
+        ADD  $17 $5 $0
+
+        ADDI $4 $16 -1          # C(n-1, k-1)
+        ADDI $5 $17 -1
+        JAL  NCR
+        ADD  $18 $2 $0          # $18 = first result
+
+        ADDI $4 $16 -1          # C(n-1, k)
+        ADD  $5 $17 $0
+        JAL  NCR
+        ADD  $2 $18 $2          # answer = sum of both
+
+        LW   $31 12($29)        # pop and return
+        LW   $16 8($29)
+        LW   $17 4($29)
+        LW   $18 0($29)
+        ADDI $29 $29 16
+        JR   $31
+
+ONE:    ADDI $2 $0 1
+        JR   $31
+
+ZERO:   ADDI $2 $0 0
+        JR   $31
