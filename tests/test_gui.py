@@ -167,12 +167,12 @@ class Flow(GuiBase):
 
     def test_runtime_error_shows_line(self):
         app = self.app
-        app.load_source("NOP\nADDI $9 $0 1\nLW $8 0($9)\nNOP")
+        app.load_source("NOP\nLUI $9 0x7fff\nORI $8 $9 0xffff\nADDI $8 $8 1\nNOP")
         app.load_program()
         app.run()
         self.finish()
-        self.assertIn("line 3", self.console())
-        self.assertIn("aligned", self.console())
+        self.assertIn("line 4", self.console())
+        self.assertIn("overflow", self.console())
 
     def test_edit_makes_program_stale(self):
         app = self.app

@@ -1,5 +1,6 @@
 #memory.py
 #simulates byte addressable main memory for the CPU, words are big-endian (same as V7)
+#Like V7, a word or halfword may start at any address (real MIPS needs multiples of 4 or 2)
 
 class MemoryError_(Exception):
     pass
@@ -12,17 +13,11 @@ class Memory:
         #value -> byte stored at that address (0-255)
         self.data = {}
 
-    def _check(self, address, size):
-        if address & (size - 1):
-            kind = {2: "halfword", 4: "word"}[size]
-            raise MemoryError_(f"Address 0x{address:08x} is not aligned to a {kind} boundary")
-
     def read(self, address, size=1):
         """
         Return the value of size bytes starting at address.
         Bytes that have never been written to read as 0.
         """
-        self._check(address, size)
         value = 0
         for i in range(size):
             value = value << 8 | self.data.get((address + i) & 0xFFFFFFFF, 0)
@@ -32,7 +27,6 @@ class Memory:
         """
         Write size bytes of value starting at address.
         """
-        self._check(address, size)
         for i in range(size):
             shift = 8 * (size - 1 - i)
             self.data[(address + i) & 0xFFFFFFFF] = (value >> shift) & 0xFF
@@ -49,6 +43,7 @@ class Memory:
         return self.data.get(address & 0xFFFFFFFF, 0)
 
     def dump(self, start=0, width=20, count=100):
+        #Same layout as V7: 5 rows of 20 bytes in hex
         print("Memory:")
         for i in range(start, start + count):
             if (i - start) % width == 0:

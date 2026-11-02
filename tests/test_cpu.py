@@ -243,12 +243,22 @@ class LoadStore(unittest.TestCase):
         cpu = run(setup + "ADDI $10 $0 9\nSC $10 0($9)")
         self.assertEqual((cpu.registers[10], cpu.memory.read_word(0x100)), (0, 5))
 
-    def test_misaligned_access_reports_line(self):
-        for source in ["ADDI $9 $0 0x101\nLW $8 0($9)", "ADDI $9 $0 0x101\nSH $8 0($9)"]:
-            with self.subTest(source), self.assertRaises(SimulationError) as ctx:
-                run(source)
-            self.assertIn("aligned", str(ctx.exception))
-            self.assertIn("line 2", str(ctx.exception))
+    def test_unaligned_access_works_like_v7(self):
+        cpu = run("ADDI $9 $0 0x101\n" + setreg(8, 0x11223344) + "SW $8 0($9)\nLW $10 0($9)\nLH $11 1($9)")
+        self.assertEqual(cpu.registers[10], 0x11223344)
+        self.assertEqual(cpu.registers[11], 0x2233)
+        self.assertEqual([cpu.memory.peek(a) for a in range(0x100, 0x106)], [0, 0x11, 0x22, 0x33, 0x44, 0])
+
+    def test_teacher_v71_program(self):
+        with open("tests/teacher_v71.txt") as f:
+            cpu = run(f.read())
+        self.assertEqual(cpu.halted_by, "HALT")
+        self.assertEqual(cpu.registers[0], 0)
+        self.assertEqual(cpu.registers[2], 5)          # 6 + 0xffff (-1)
+        self.assertEqual(cpu.registers[3], 6)          # ADDI $3 $0 99 is skipped
+        self.assertEqual(cpu.registers[9], 0)          # last set by SLTIU $9 $11 1
+        self.assertEqual((cpu.registers[10], cpu.registers[11]), (31, 32))
+        self.assertEqual(cpu.registers[12], 0)         # LW 1($0) reads memory that was never written
 
     def test_reset_restores_state(self):
         cpu = run("ADDI $8 $0 0x100\nSW $8 0($8)")

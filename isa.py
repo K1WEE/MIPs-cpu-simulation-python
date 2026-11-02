@@ -285,10 +285,9 @@ class Instruction:
 
     @staticmethod
     def _imm16(spec, value):
-        low = 0 if spec.imm_kind == "u" else -0x8000
-        high = 0x7FFF if spec.imm_kind == "s" else 0xFFFF
-        if not low <= value <= high:
-            raise LineError(f"Immediate {value} does not fit in 16 bits ({low} to {high})")
+        # Any 16 bit pattern is accepted, as in V7: 0xffff in ADDI means -1, -1 in ORI means 0xffff
+        if not -0x8000 <= value <= 0xFFFF:
+            raise LineError(f"Immediate {value} does not fit in 16 bits (-32768 to 0xffff)")
         return value
 
     @staticmethod

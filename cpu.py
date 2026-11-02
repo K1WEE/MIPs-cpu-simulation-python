@@ -5,7 +5,7 @@
 from isa import ProgramError, cmdDict, load_program
 from memory import Memory, MemoryError_
 
-DISP_FORMAT = "HEX"  # INT or HEX form, for debug()
+DISP_FORMAT = "INT"  # INT or HEX form, for debug()
 
 M32 = 0xFFFFFFFF
 M64 = 0xFFFFFFFFFFFFFFFF
@@ -276,6 +276,7 @@ class CPU:
         self.lo = 0
         self.PC = self.instructions[0].address if self.instructions else 0
         self.running = True
+        self.trace = False      # print each step like V7
         self.halted_by = None   # "HALT", "end" or the error message
         self.steps = 0
         self.ll_address = None
@@ -299,6 +300,8 @@ class CPU:
         """
         Check all registers are valid: $0 is always 0, values stay 32 bit
         """
+        if self.registers[0] != 0 and self.trace:
+            print("****************Warning: register 0 must alwasys be zero")
         self.registers[0] = 0
         for i in range(32):
             self.registers[i] &= M32
@@ -316,9 +319,13 @@ class CPU:
                 self.running = False
                 self.halted_by = "end"
                 return None
+            if self.trace:
+                print(f"Executed: {pc:08X} {instr.raw}")
             if instr.opcode == "HALT":
                 self.running = False
                 self.halted_by = "HALT"
+                if self.trace:
+                    self.debug()
                 return instr
             self.PC = (pc + 4) & M32
             self.execute(instr)
@@ -329,6 +336,8 @@ class CPU:
             where = f"line {line} " if line else ""
             self.halted_by = f"{where}(0x{pc:08x}): {e}"
             raise SimulationError(self.halted_by) from None
+        if self.trace:
+            self.debug()  # before validate, so a wrong $0 is shown first (same as V7)
         self.validate()
         self.steps += 1
         return instr
@@ -345,15 +354,17 @@ class CPU:
         """
         Main fetch-decode-execute loop. Returns False if max_steps was reached first.
         """
+        self.trace = trace
         while self.running:
-            if max_steps is not None and self.steps >= max_steps:
+            if max_steps is not None and self.steps >= max_steps and not self._at_stop():
                 return False
-            pc = self.PC
-            instr = self.step()
-            if trace and instr is not None:
-                print(f"Executed: {pc:08X} {instr.raw}")
-                self.debug()
+            self.step()
         return True
+
+    def _at_stop(self):
+        """True if the next step only stops the program (HALT or past the last line), which is not counted."""
+        instr = self.by_address.get(self.PC)
+        return self.PC == self.end_address if instr is None else instr.opcode == "HALT"
 
     def debug(self):
         """
@@ -362,13 +373,14 @@ class CPU:
         W = 5
         print("Registers:")
         for i, val in enumerate(self.registers):
-            if i % W == 0: print(f"{i:>2}-{min(i + W - 1, 31):>2}", end="")
+            if i % W == 0: print(f"{i:>2}-{i + W - 1:>2}", end="")
             if DISP_FORMAT == "HEX":
-                print(f"   {val:08x}", end="")
+                print(f"{val:08x}".rjust(11), end="")
             else:
                 print(f"{s32(val):>11}", end="")
             if i % W == W - 1: print()
-        print(f"\n   PC {self.PC:08x}   HI {self.hi:08x}   LO {self.lo:08x}")
+        print("\n" + "-" * 80)
+        self.memory.dump(self.instructions[0].address if self.instructions else 0)  # start from the program
         print("-" * 80)
 
 

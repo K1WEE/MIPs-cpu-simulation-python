@@ -1,0 +1,16 @@
+.ORG 0x2000
+LUI $9 0xffff
+ORI $10 $9 0xfffe
+ADDI $11 $0 32
+SLTI  $9 $11 -1
+SLTIU $9 $11 -1
+SLTIU $9 $11 1
+ADDI $10 $11 -1
+J 0x2030
+ADDI $21 $0 6
+SW $11 1($21)
+LW $12 1($21)
+BEQ $11 $21 1
+BNE $11 $21 1
+ADDI $3 $0 99
+HALT

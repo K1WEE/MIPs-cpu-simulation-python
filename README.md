@@ -8,23 +8,71 @@ V8 ตัวแรกที่ทำงานแบบ MARS (มี assembler, `
 
 ## วิธีรัน
 
-เปิดหน้าต่างแอป:
+รัน `instructions.txt` แบบ V7 (เหมือนกด F5 ใน IDLE) โดยพิมพ์ทุกบรรทัดของโปรแกรมพร้อม address และ hex แล้วแสดง register และ memory ทุก step ในรูปแบบเดียวกับ V7:
 
 ```bash
 python3 main.py
 ```
 
-รันใน Terminal และแสดง register ทุก step แบบ V7:
+ถ้าไม่มี `instructions.txt` ในโฟลเดอร์ปัจจุบัน จะใช้ไฟล์ที่อยู่ข้าง `main.py`
+
+รันไฟล์อื่นแบบเดียวกัน:
 
 ```bash
-python3 main.py examples/instructions.txt
+python3 main.py examples/ncr_recursive.txt
 ```
+
+ค่า register แสดงเป็นฐานสิบตามค่าเริ่มต้น (`DISP_FORMAT = "INT"` ใน `cpu.py`) ใส่ `--hex` เพื่อแสดงแบบฐาน 16
+
+เปิดหน้าต่างแอป:
+
+```bash
+python3 main.py --gui
+```
+
+หรือเปิดไฟล์ `run_gui.py` ใน IDLE แล้วกด F5
 
 ดูเฉพาะผลสุดท้าย:
 
 ```bash
 python3 main.py -q examples/ncr_iterative.txt
 ```
+
+## ใช้กับ Autolab
+
+`--print` จะพิมพ์ค่าเฉพาะ register ที่ระบุตอนโปรแกรมจบ บรรทัดละตัว โดยไม่มี trace หรือ memory เพื่อให้เทียบกับเฉลยได้ตรง
+
+```bash
+python3 main.py --print v0 examples/ncr_recursive.txt
+```
+
+```text
+$2 = 15
+```
+
+```bash
+python3 main.py --print 10,11 --hex examples/instructions.txt
+```
+
+```text
+$10 = 0x0000001f
+$11 = 0x00000020
+```
+
+| Option | ความหมาย |
+|---|---|
+| `--print REGS` | register ที่จะพิมพ์ คั่นด้วยจุลภาค เขียนได้ทั้ง `2`, `$2`, `v0` หรือ `$v0` และใช้ `pc`, `hi`, `lo` ได้ |
+| `--hex` | พิมพ์เป็นเลขฐาน 16 แบบ 8 หลัก (ค่าเริ่มต้นเป็นฐานสิบแบบมีเครื่องหมาย เช่น `-5`) |
+| `--max-steps N` | หยุดเมื่อรันครบ N คำสั่ง (ค่าเริ่มต้น 10,000,000) กันโปรแกรมวนไม่รู้จบ โดย `HALT` ไม่นับเป็นคำสั่ง |
+
+ข้อความ error ทุกอย่างไปที่ stderr ส่วน stdout มีเฉพาะผลลัพธ์
+
+| Exit code | ความหมาย |
+|---|---|
+| 0 | จบด้วย `HALT` หรือรันพ้นบรรทัดสุดท้าย |
+| 1 | โปรแกรมผิด syntax, เปิดไฟล์ไม่ได้ หรือชื่อ register ใน `--print` ผิด |
+| 2 | runtime error เช่น overflow หรือ address ไม่ align (บอกเลขบรรทัดใน stderr) |
+| 3 | รันครบ `--max-steps` แล้วโปรแกรมยังไม่จบ |
 
 รันเทสต์:
 
@@ -34,7 +82,7 @@ python3 -m unittest discover tests
 
 ## เดโม nCk
 
-1. เปิดแอป โปรแกรม `ncr_recursive.txt` จะอยู่ในแท็บ Edit
+1. เปิดแอปด้วย `python3 main.py --gui` โปรแกรม `ncr_recursive.txt` จะอยู่ในแท็บ Edit
 2. แก้ค่า n และ k ที่บรรทัด `ADDI $4 $0 6` และ `ADDI $5 $0 2`
 3. กด **Load** แท็บ Execute จะแสดง address, hex และ source ของทุกบรรทัด
 4. กด **Run** คำตอบจะอยู่ใน `$2` (`$v0`) และแสดงในช่องข้อความด้านล่าง
@@ -84,7 +132,8 @@ DONE:   HALT                # หยุดโปรแกรม
 |---|---|---|
 | PC | เลขบรรทัด (address ÷ 4) | address จริง |
 | ไม่มี `.ORG` | ล่ม | เริ่มที่ address 0 |
-| Memory | `SW` เก็บทั้งค่าไว้ใน address เดียว | เก็บทีละ byte แบบ big-endian, word ต้อง align ด้วย 4 |
+| Memory | `SW` เก็บทั้งค่าไว้ใน address เดียว | เก็บทีละ byte แบบ big-endian โดย address ไม่ต้องหารด้วย 4 ลงตัวเหมือน V7 (MIPS จริงต้องหารลงตัว) |
+| Immediate 16 บิต | ตัดเหลือ 16 บิต | รับ -32768 ถึง `0xffff` เหมือน V7 เช่น `ADDI $2 $3 0xffff` คือบวก -1 |
 | Register | ค่าลบปนกับค่าบวกแบบ Python | เก็บเป็น 32 บิตเสมอ, `$0` เป็น 0 |
 | Hex ของ `BEQ`/`BNE` | สลับ rs กับ rt | ตามมาตรฐาน MIPS |
 | คำสั่งผิด | `exit(1)` | บอกเลขบรรทัดและสาเหตุทุกบรรทัดที่ผิด |

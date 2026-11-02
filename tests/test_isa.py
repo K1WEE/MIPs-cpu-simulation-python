@@ -92,6 +92,10 @@ class Syntax(unittest.TestCase):
         self.assertEqual(words("L: NOP\nBEQ $0 $0 L")[1], 0x1000FFFE)
         self.assertEqual(words(".ORG 0x2000\nNOP\nL: J L")[1], 0x08000801)
 
+    def test_any_16_bit_pattern_like_v7(self):
+        self.assertEqual(words("ADDI $2 $3 0xffff"), words("ADDI $2 $3 -1"))
+        self.assertEqual(words("ORI $8 $9 -1"), words("ORI $8 $9 0xffff"))
+
     def test_jalr_one_operand(self):
         self.assertEqual(words("JALR $9"), [0x0120F809])
 
@@ -112,8 +116,8 @@ class Errors(unittest.TestCase):
         self.assert_error("NOP\n\nJ NOWHERE", 3, "Unknown label")
         self.assert_error("L: NOP\nL: NOP", 2, "already defined")
         self.assert_error("SLL $8 $9 32", 1, "0-31")
-        self.assert_error("ADDI $8 $9 40000", 1, "does not fit")
-        self.assert_error("ORI $8 $9 -1", 1, "does not fit")
+        self.assert_error("ADDI $8 $9 70000", 1, "does not fit")
+        self.assert_error("ORI $8 $9 -40000", 1, "does not fit")
         self.assert_error("LW $8 $9", 1, "offset($reg)")
         self.assert_error("J 0x2002", 1, "multiple of 4")
         self.assert_error(".ORG 0x2001", 1, "multiple of 4")
