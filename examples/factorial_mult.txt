@@ -1,0 +1,37 @@
+# n! (factorial) using the MULT instruction
+#
+#   n! = n x (n-1) x ... x 2 x 1,  0! = 1
+#
+# MULT puts the 64 bit product in HI:LO. The answer is kept only while it fits
+# in a signed 32 bit register, so 12! = 479001600 is the largest. If the product
+# does not fit (HI is not 0, or the sign bit of LO is set), $2 = -1.
+# A negative n gives $2 = 0.
+#
+# Change n on the first line. The answer is in $2 when HALT is reached.
+#
+# Registers: $4 = n, $2 = answer, $8 = temporary
+
+.ORG 0x2000
+        ADDI $4 $0 5            # n
+        JAL  FACT               # $2 = n!
+        HALT
+
+# FACT: $4 = n, answer in $2 (or -1 if too large)
+FACT:   ADDI $2 $0 1            # result = 1
+        SLT  $8 $4 $0
+        BEQ  $8 $0 LOOP
+        ADDI $2 $0 0            # n < 0 gives 0
+        JR   $31
+
+LOOP:   BLEZ $4 DONE            # while n > 0
+        MULT $2 $4              # HI:LO = result x n
+        MFHI $8
+        BNE  $8 $0 TOOBIG       # high half used: too large
+        MFLO $2                 # result = low half
+        SLT  $8 $2 $0
+        BNE  $8 $0 TOOBIG       # sign bit set: too large for signed 32 bit
+        ADDI $4 $4 -1           # n = n - 1
+        J    LOOP
+
+TOOBIG: ADDI $2 $0 -1
+DONE:   JR   $31

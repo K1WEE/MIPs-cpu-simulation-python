@@ -38,6 +38,16 @@ python3 main.py --gui
 python3 main.py -q examples/ncr_iterative.txt
 ```
 
+## วิดีโอสอน nCk แบบ Recursive
+
+`video/ncr_recursive.mp4` (ประมาณ 7 นาครึ่ง) อธิบาย nCk, กฎของปาสคาล, โครงโปรแกรม, stack frame แล้วไล่การทำงานจริงของ `C(3, 1)` ทีละคำสั่ง ภาพทุกขั้นมาจากการรัน simulator นี้จริง เสียงพากย์เป็นเสียงสังเคราะห์ภาษาไทย (Kanya ของ macOS) ส่วน `video/script.md` คือสคริปต์พร้อมเวลา สำหรับอัดเสียงพากย์เอง
+
+สร้างใหม่ได้ด้วย (ต้องมี Pillow, ffmpeg และ macOS):
+
+```bash
+python3 video/make_video.py
+```
+
 ## ใช้กับ Autolab
 
 `--print` จะพิมพ์ค่าเฉพาะ register ที่ระบุตอนโปรแกรมจบ บรรทัดละตัว โดยไม่มี trace หรือ memory เพื่อให้เทียบกับเฉลยได้ตรง
@@ -94,6 +104,14 @@ python3 -m unittest discover tests
 | `examples/ncr_recursive.txt` | `C(n,k) = C(n-1,k-1) + C(n-1,k)` ใช้ stack | n ไม่เกินประมาณ 20 |
 | `examples/ncr_iterative.txt` | แถวของสามเหลี่ยมปาสคาลใน memory ที่ `0x3000` | ทุกคำตอบที่อยู่ใน signed 32 บิต ถ้าเกินจะได้ `$2 = -1` |
 | `examples/instructions.txt` | ไฟล์ตัวอย่างของ V7 | รันได้โดยไม่ต้องแก้ |
+| `examples/factorial_mult.txt` | n! ด้วยคำสั่ง `MULT` แล้วเช็ก `HI` ว่าล้นหรือไม่ | 0! ถึง 12! ถ้าเกินจะได้ `$2 = -1` |
+| `examples/factorial_nomul.txt` | n! โดยไม่ใช้คำสั่งคูณ เรียก subroutine `MULTIPLY` (shift-and-add) ด้วย `JAL` | 0! ถึง 12! ถ้าเกินจะได้ `$2 = -1` |
+
+ไฟล์ factorial ทั้งสองแบบใส่ n ที่บรรทัด `ADDI $4 $0 5` แล้วดูคำตอบใน `$2` ส่วน n ติดลบจะได้ 0 ค่าสูงสุดคือ 12! = 479001600 เพราะ 13! เกิน signed 32 บิต
+
+```bash
+python3 main.py --print v0 examples/factorial_nomul.txt
+```
 
 ## Syntax
 

@@ -1,0 +1,74 @@
+# n! (factorial) without a multiply instruction
+#
+# FACT multiplies with its own subroutine MULTIPLY, which uses shift-and-add,
+# the same idea as the multiplier hardware:
+#
+#   product = 0
+#   while b != 0:
+#       if the lowest bit of b is 1: product = product + a
+#       b = b >> 1          (next bit of b)
+#       a = a << 1          (a x 2)
+#
+# Only ADDU, ANDI, SLL and SRL are used, no MULT or DIV.
+# 12! = 479001600 is the largest answer that fits in a signed 32 bit register.
+# If the answer does not fit, $2 = -1. A negative n gives $2 = 0.
+#
+# Change n on the first line. The answer is in $2 when HALT is reached.
+#
+# Registers: $4 = n, $2 = answer, $29 = stack pointer, $31 = return address
+
+.ORG 0x2000
+        ADDI $4 $0 5            # n
+        ADDI $29 $0 0x7000      # stack starts at 0x7000 and grows down
+        JAL  FACT               # $2 = n!
+        HALT
+
+# FACT: $4 = n, answer in $2 (or -1 if too large)
+# FACT calls MULTIPLY, so it saves $31 and the registers it needs on the stack
+FACT:   ADDI $29 $29 -12        # push $31, $16, $17
+        SW   $31 8($29)
+        SW   $16 4($29)
+        SW   $17 0($29)
+
+        ADD  $16 $4 $0          # $16 = i, counts down from n
+        ADDI $17 $0 1           # $17 = result = 1
+        SLT  $8 $16 $0
+        BEQ  $8 $0 FLOOP
+        ADDI $17 $0 0           # n < 0 gives 0
+        J    FEND
+
+FLOOP:  BLEZ $16 FEND           # while i > 0
+        ADD  $4 $17 $0          # a = result
+        ADD  $5 $16 $0          # b = i
+        JAL  MULTIPLY           # $2 = a x b, $3 = 1 if too large
+        BNE  $3 $0 FOVER
+        ADD  $17 $2 $0          # result = a x b
+        ADDI $16 $16 -1         # i = i - 1
+        J    FLOOP
+
+FOVER:  ADDI $17 $0 -1          # too large
+FEND:   ADD  $2 $17 $0          # answer
+        LW   $31 8($29)         # pop and return
+        LW   $16 4($29)
+        LW   $17 0($29)
+        ADDI $29 $29 12
+        JR   $31
+
+# MULTIPLY: $2 = $4 x $5 (both 0 or more), $3 = 1 if the product does not fit
+# in a signed 32 bit register. Changes $4, $5 and $8.
+MULTIPLY: ADDI $2 $0 0          # product = 0
+        ADDI $3 $0 0            # no overflow yet
+MLOOP:  BEQ  $5 $0 MDONE        # no bits of b left
+        ANDI $8 $5 1            # lowest bit of b
+        BEQ  $8 $0 MSHIFT
+        ADDU $2 $2 $4           # product = product + a
+        SLT  $8 $2 $0
+        BNE  $8 $0 MOVER        # sign bit set: too large
+MSHIFT: SRL  $5 $5 1            # b = b >> 1
+        BEQ  $5 $0 MDONE
+        SLL  $4 $4 1            # a = a << 1
+        SLT  $8 $4 $0
+        BNE  $8 $0 MOVER        # a is already too large and will still be added
+        J    MLOOP
+MOVER:  ADDI $3 $0 1
+MDONE:  JR   $31
