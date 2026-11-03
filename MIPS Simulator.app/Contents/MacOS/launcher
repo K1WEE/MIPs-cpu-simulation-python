@@ -1,0 +1,67 @@
+#!/bin/bash
+# Double-click launcher for the simulator window. Same as: python3 main.py --gui
+#
+# Apps opened from Finder get almost no PATH, so this looks for Python itself.
+# It prefers a Python whose Tk is 8.6.13 or newer, because older Tk on macOS
+# sometimes needs several clicks before a button works.
+#
+#   MIPS_PYTHON=/path/to/python3   use this Python first
+#   launcher --which-python        print the chosen Python and exit
+#   MIPS_NO_DIALOG=1               print errors instead of showing a dialog
+
+PROJECT="$(cd "$(dirname "$0")/../../.." && pwd)"
+LOG="$HOME/Library/Logs/mips-simulator.log"
+
+fail() {
+    if [ -n "$MIPS_NO_DIALOG" ]; then
+        echo "MIPS Simulator: $1" >&2
+    else
+        /usr/bin/osascript -e 'on run argv' \
+            -e 'display alert "MIPS Simulator could not start" message (item 1 of argv) as critical' \
+            -e 'end run' "$1" >/dev/null 2>&1
+    fi
+    exit 1
+}
+
+# Prints "good" (Tk 8.6.13+), "old" (other Tk) or nothing (no tkinter)
+tk_check() {
+    "$1" -c '
+import tkinter
+v = tuple(int(x) for x in tkinter.Tcl().call("info", "patchlevel").split("."))
+print("good" if v >= (8, 6, 13) else "old")' 2>/dev/null
+}
+
+candidates() {
+    for p in "$HOME/miniconda3/bin/python3" "$HOME/anaconda3/bin/python3" \
+             "$HOME/miniforge3/bin/python3" /opt/homebrew/bin/python3 \
+             /usr/local/bin/python3 /Library/Frameworks/Python.framework/Versions/*/bin/python3; do
+        echo "$p"
+    done
+    command -v python3
+    echo /usr/bin/python3
+}
+
+choose_python() {
+    local fallback=""
+    while IFS= read -r p; do
+        [ -x "$p" ] || continue
+        case "$(tk_check "$p")" in
+            good) echo "$p"; return ;;
+            old) [ -z "$fallback" ] && fallback="$p" ;;
+        esac
+    done < <(candidates)
+    echo "$fallback"
+}
+
+PY="${MIPS_PYTHON:-$(choose_python)}"
+[ -n "$PY" ] || fail "No Python 3 with tkinter was found. Install Python from python.org or Miniconda, then try again."
+
+if [ "$1" = "--which-python" ]; then
+    echo "$PY"
+    exit 0
+fi
+
+cd "$PROJECT" || fail "Cannot open the project folder: $PROJECT"
+mkdir -p "$(dirname "$LOG")"
+{ echo "--- $(date) using $PY"; } >>"$LOG"
+"$PY" main.py --gui 2>>"$LOG" || fail "The simulator stopped with an error. Details are in $LOG"

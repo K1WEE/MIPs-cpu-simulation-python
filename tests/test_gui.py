@@ -66,8 +66,18 @@ class Flow(GuiBase):
         for iid in ("r0", "r31", "pc", "hi", "lo"):
             self.assertTrue(self.app.reg_view.bbox(iid), iid)
 
+    def test_window_has_icon(self):
+        self.assertEqual((self.app.icon.width(), self.app.icon.height()), (256, 256))
+
+    def test_starts_with_empty_editor(self):
+        self.assertEqual(self.app.editor.get("1.0", "end-1c"), "")
+        self.assertEqual(self.app.tabs.index("current"), 0)
+        self.assertFalse(self.app.dirty)
+        self.assertTrue(self.disabled("Run"))
+
     def test_run_recursive_ncr(self):
         app = self.app
+        app.load_example("ncr_recursive.txt")
         self.assertTrue(app.load_program())
         self.assertEqual(app.tabs.index("current"), 1)
         app.run()

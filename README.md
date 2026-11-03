@@ -32,6 +32,14 @@ python3 main.py --gui
 
 หรือเปิดไฟล์ `run_gui.py` ใน IDLE แล้วกด F5
 
+### เปิดแบบดับเบิลคลิก
+
+- **Mac:** ดับเบิลคลิก `MIPS Simulator.app` ใน Finder หรือลากไปไว้ใน Dock ได้ แต่ตัวแอปต้องอยู่ในโฟลเดอร์นี้ เพราะมันหาไฟล์โปรแกรมจากตำแหน่งของตัวเอง
+  - launcher จะหา Python เองและเลือกตัวที่ใช้ Tk 8.6.13 ขึ้นไปก่อน ถ้าต้องการบังคับใช้ตัวอื่น ให้ตั้ง `MIPS_PYTHON=/path/to/python3`
+  - ถ้าเปิดไม่ขึ้นจะมีกล่องแจ้ง error และดูรายละเอียดได้ใน `~/Library/Logs/mips-simulator.log`
+  - ถ้าคัดลอกไปเครื่องอื่นผ่าน zip หรือการดาวน์โหลด แล้ว macOS ไม่ยอมเปิด ให้คลิกขวาแล้วเลือก Open ในครั้งแรก
+- **Windows:** ดับเบิลคลิก `MIPS Simulator.pyw` ซึ่งต้องติดตั้ง Python จาก python.org ไว้ก่อน (มี Tkinter มาให้แล้ว) จะไม่มีหน้าต่าง console ขึ้นมา และถ้าเปิดไม่ได้จะมีกล่องแสดง error
+
 ดูเฉพาะผลสุดท้าย:
 
 ```bash
@@ -92,7 +100,7 @@ python3 -m unittest discover tests
 
 ## เดโม nCk
 
-1. เปิดแอปด้วย `python3 main.py --gui` โปรแกรม `ncr_recursive.txt` จะอยู่ในแท็บ Edit
+1. เปิดแอปด้วย `python3 main.py --gui` (เริ่มเป็น editor เปล่า) แล้วเลือก `ncr_recursive.txt` จากเมนู Examples
 2. แก้ค่า n และ k ที่บรรทัด `ADDI $4 $0 6` และ `ADDI $5 $0 2`
 3. กด **Load** แท็บ Execute จะแสดง address, hex และ source ของทุกบรรทัด
 4. กด **Run** คำตอบจะอยู่ใน `$2` (`$v0`) และแสดงในช่องข้อความด้านล่าง
@@ -172,5 +180,6 @@ Machine code (hex) ของทุกบรรทัดถูกเขียน�
 | `cpu.py` | `fetch` / `execute` / `validate` / `run` / `debug` |
 | `memory.py` | memory แบบ dict และ `dump` |
 | `gui/app.py` | หน้าต่างแอป |
+| `MIPS Simulator.app`, `MIPS Simulator.pyw` | ตัวเปิดแอปแบบดับเบิลคลิก (Mac, Windows) |
 | `examples/` | โปรแกรมตัวอย่าง |
 | `tests/` | เทสต์ |

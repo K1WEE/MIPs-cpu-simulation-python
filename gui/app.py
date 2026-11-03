@@ -12,6 +12,7 @@ from cpu import CPU, ProgramError, SimulationError, s32
 from isa import REG_NAMES
 
 EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "..", "examples")
+ICON_FILE = os.path.join(os.path.dirname(__file__), "icon.png")
 SPEEDS = {"Max": None, "100 /s": 100, "30 /s": 30, "10 /s": 10, "5 /s": 5, "2 /s": 2, "1 /s": 1}
 BATCH = 1000
 SLICE_SECONDS = 0.03
@@ -37,8 +38,7 @@ def old_tk_warning(patchlevel, platform=sys.platform):
         return None
     return (f"Warning: this Python uses Tk {patchlevel}, which can miss button clicks on macOS.\n"
             f"Running Python: {sys.executable}\n"
-            "Use a Python with Tk 8.6.13 or newer, for example:\n"
-            "  /Users/kawin/miniconda3/bin/python3 main.py\n")
+            "Use a Python with Tk 8.6.13 or newer")
 
 
 class App:
@@ -58,6 +58,8 @@ class App:
 
         root.title("MIPS32 Simulator")
         root.geometry("1280x800")
+        self.icon = tk.PhotoImage(file=ICON_FILE)  # also shown in the Dock / taskbar
+        root.iconphoto(True, self.icon)
         self.mono = tkfont.nametofont("TkFixedFont").copy()
         self.mono.configure(size=12)
         ttk.Style(root).configure("Treeview", font=self.mono, rowheight=self.mono.metrics("linespace") + 2)
@@ -69,7 +71,8 @@ class App:
         ttk.Label(root, textvariable=self.status, anchor="w", padding=(8, 3)).pack(fill="x", side="bottom")
         root.protocol("WM_DELETE_WINDOW", self.quit)
         self._update_buttons()
-        self.load_example("ncr_recursive.txt")
+        self.load_source("")
+        self.status.set("Ready. Write a program, or open one from File or Examples")
         warning = old_tk_warning(root.tk.call("info", "patchlevel"))
         if warning:
             self.console_write(warning, "error")
